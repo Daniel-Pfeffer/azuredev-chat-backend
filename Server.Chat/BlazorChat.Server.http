@@ -1,0 +1,31 @@
+@ADR = http://localhost:5190
+
+### Create a new chat
+POST {{ADR}}/api/Chat
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "best chat",
+  "users": [
+    "user1",
+    "user2"
+  ]
+}
+
+### Get all chats
+GET {{ADR}}/api/Chat
+Accept: application/json
+
+### Get all users for a chat
+GET {{ADR}}/api/Chat/f41fe046-84ed-4a09-850e-f9cfe04cdcc6/users
+Accept: application/json
+
+### Send message
+POST {{ADR}}/api/Chat/f41fe046-84ed-4a09-850e-f9cfe04cdcc6/message
+Accept: application/json
+Content-Type: application/json
+
+{
+  
+}
