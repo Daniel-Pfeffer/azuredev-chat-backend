@@ -1,100 +1,94 @@
-using BalzorApp.Shared.Models;
-using BalzorApp.Shared.Services;
-using BlazorChat.Server.Data;
-using BlazorChat.Server.Repository;
 using Microsoft.EntityFrameworkCore;
+using Server.Chat.Data;
+using Server.Chat.Models;
+using Server.Chat.Repositories;
 
-namespace BlazorChat.Server.Services;
+namespace Server.Chat.Services;
 
-public class ChatService(ChatDbContext context) : IChatService
+internal class ChatService(ChatDbContext context)
 {
-    private readonly ChatDbContext _context = context;
-
-    public IEnumerable<ChatDto> GetChats()
+    public IEnumerable<ChatEntity> GetChats()
     {
-        return _context.Chats.ToList()
-            .Select(c =>
-                new ChatDto
-                {
-                    Id = c.ExternalId,
-                    Name = c.Name,
-                    Users = c.UsersIds.Select(userId => new UserDto { Id = userId }),
-                }
-            );
+        return context.Chats;
     }
 
-    public void CreateChat(CreateChatDto chat)
+    public string CreateChat(CreateChatDto chat)
     {
-        var newChat = new Chat
+        var newChat = new ChatEntity
         {
-            ExternalId = Guid.NewGuid().ToString(),
+            CreatorId = chat.CreatorId,
             Name = chat.Name,
-            UsersIds = chat.Users.ToList(),
+            ExternalUsersIds = [chat.CreatorId]
         };
 
-        _context.Chats.Add(newChat);
-        _context.SaveChanges();
+        context.Chats.Add(newChat);
+        context.SaveChanges();
+        return newChat.ExternalId;
     }
 
     public void InviteUserToChat(string chatId, string userId)
     {
-        var chat = _context.Chats.FirstOrDefault(c => c.ExternalId == chatId);
-        chat?.UsersIds.Add(userId);
-        _context.SaveChanges();
+        ChatEntity chat = context.Chats.ByExternalId(chatId);
+
+        chat.ExternalUsersIds.Add(userId);
+        context.SaveChanges();
     }
 
     public void RemoveUserFromChat(string chatId, string userId)
     {
-        var chat = _context.Chats.FirstOrDefault(c => c.ExternalId == chatId);
-        chat?.UsersIds.Remove(userId);
-        _context.SaveChanges();
+        var chat = context.Chats.ByExternalId(chatId);
+
+        chat.ExternalUsersIds.Remove(userId);
+        context.SaveChanges();
     }
 
     public void DeleteChat(string chatId)
     {
-        var chat = _context.Chats.FirstOrDefault(c => c.ExternalId == chatId);
-        if (chat != null) _context.Chats.Remove(chat);
-        _context.SaveChanges();
+        var chat = context.Chats.ByExternalId(chatId);
+
+        context.Chats.Remove(chat);
+        context.SaveChanges();
     }
 
-    public void SendMessage(string chatId, string text)
+    public void UpdateChat(string chatId, CreateChatDto dto)
     {
-        var chat = _context.Chats.FirstOrDefault(c => c.ExternalId == chatId);
+        var chat = context.Chats.ByExternalId(chatId);
 
-        if (chat == null) return;
+        chat.Name = dto.Name;
+        context.SaveChanges();
+    }
 
-        var message = new Message
+    public ChatEntity GetChat(string chatId)
+    {
+        return context.Chats.ByExternalId(chatId);
+    }
+
+    public string SendMessage(string chatId, SendMessageDto message)
+    {
+        var chat = context.Chats.ByExternalId(chatId);
+
+        var newMessage = new MessageEntity
         {
-            ExternalId = Guid.NewGuid().ToString(),
             ChatId = chat.Id,
-            Text = text,
+            Text = message.Text,
+            SenderId = message.SenderId,
+            CreatedAt = DateTime.Now.ToUniversalTime()
         };
 
-        _context.Messages.Add(message);
-        _context.SaveChanges();
+        context.Messages.Add(newMessage);
+        context.SaveChanges();
+
+        return newMessage.ExternalId;
     }
 
-    public IEnumerable<MessageDto> GetMessages(string chatId)
+    public IEnumerable<MessageEntity> GetMessages(string chatId)
     {
-        var chat = _context.Chats.Include(c => c.Messages).FirstOrDefault(c => c.ExternalId == chatId);
-
-        if (chat == null) return new List<MessageDto>();
-
-        return chat.Messages
-            .Select(m =>
-                new MessageDto
-                {
-                    Id = m.ExternalId,
-                    Text = m.Text,
-                    Time = m.Time,
-                    SenderId = m.SenderId,
-                }
-            );
+        var chat = context.Chats.ByExternalId(chatId);
+        return context.Messages.Where(m => m.ChatId == chat.Id).Include(c => c.Chat);
     }
 
-    public IEnumerable<UserDto> GetUsers(string chatId)
+    public MessageEntity GetMessage(string messageId)
     {
-        var chat = _context.Chats.FirstOrDefault(c => c.ExternalId == chatId);
-        return chat?.UsersIds.Select(userId => new UserDto { Id = userId }) ?? new List<UserDto>();
+        return context.Messages.Include(m => m.Chat).ByExternalId(messageId);
     }
 }

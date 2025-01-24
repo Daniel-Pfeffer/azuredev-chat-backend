@@ -1,67 +1,65 @@
-using BalzorApp.Shared.Models;
-using BalzorApp.Shared.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Server.Chat.Models;
+using Server.Chat.Services.Dto;
 
-namespace BlazorChat.Server.Controllers;
+namespace Server.Chat.Controllers;
 
-[Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class ChatController : ControllerBase
+public class ChatController(IChatDtoService chatService)
 {
-    private readonly IChatService _chatService;
-
-    public ChatController(IChatService chatService)
-    {
-        _chatService = chatService;
-    }
-
     [HttpGet]
     public IEnumerable<ChatDto> GetChats()
     {
-        return _chatService.GetChats();
+        return chatService.GetChats();
     }
 
     [HttpPost]
-    public void CreateChat(CreateChatDto chat)
+    public string CreateChatDto(CreateChatDto dto)
     {
-        _chatService.CreateChat(chat);
+        return chatService.CreateChatDto(dto);
     }
 
-    [HttpPost("{chatId}/invite/{userId}")]
+    [HttpPost("{chatId}/member/{userId}")]
     public void InviteUserToChat(string chatId, string userId)
     {
-        _chatService.InviteUserToChat(chatId, userId);
+        chatService.InviteUserToChat(chatId, userId);
     }
 
-    [HttpPost("{chatId}/remove/{userId}")]
+    [HttpDelete("{chatId}/member/{userId}")]
     public void RemoveUserFromChat(string chatId, string userId)
     {
-        _chatService.RemoveUserFromChat(chatId, userId);
+        chatService.RemoveUserFromChat(chatId, userId);
     }
 
     [HttpDelete("{chatId}")]
     public void DeleteChat(string chatId)
     {
-        _chatService.DeleteChat(chatId);
+        chatService.DeleteChat(chatId);
     }
 
-    [HttpPost("{chatId}/message")]
-    public void SendMessage(string chatId, string text)
+    [HttpPut("{chatId}")]
+    public void UpdateChat(string chatId, CreateChatDto dto)
     {
-        _chatService.SendMessage(chatId, text);
+        chatService.UpdateChat(chatId, dto);
     }
 
+    [HttpGet("{chatId}")]
+    public ChatDto GetChat(string chatId)
+    {
+        return chatService.GetChat(chatId);
+    }
+    
     [HttpGet("{chatId}/messages")]
     public IEnumerable<MessageDto> GetMessages(string chatId)
     {
-        return _chatService.GetMessages(chatId);
+        return chatService.GetMessages(chatId);
     }
 
-    [HttpGet("{chatId}/users")]
-    public IEnumerable<UserDto> GetUsers(string chatId)
+    [HttpGet("message/{messageId}")]
+    public MessageDto GetMessage(string messageId)
     {
-        return _chatService.GetUsers(chatId);
+        return chatService.GetMessage(messageId);
     }
 }
